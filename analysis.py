@@ -13,39 +13,60 @@ if uploaded_file is None:
     st.stop()
 
 df = pd.read_csv(uploaded_file)
+st.dataframe(df)
 
-#print(df.groupby("mass_g")["extension_cm"].mean())
+numeric_columns = df.select_dtypes(include="number").columns.tolist()
 
-def summarize_data(df, group_column, measurement_column):
+if len(numeric_columns) < 2:
+    st.warning("Upload data with at least two numeric columns.")
+    st.stop()
+
+x_column = st.selectbox("X variable", numeric_columns)
+y_column = st.selectbox("Y variable", numeric_columns, index=1)
+
+if x_column == y_column:
+    st.warning("Choose two different columns.")
+    st.stop()
+
+
+analysis_data = df[[x_column, y_column]].dropna()
+
+if analysis_data.empty:
+    st.warning("No rows contain values for both selected variables.")
+    st.stop()
+
+st.write(f"Measurements used: {len(analysis_data)}")
+st.write(f"Excluded rows due to missing data: {len(df) - len(analysis_data)}")
+
+def summarize_data(analysis_data, group_column, measurement_column):
     for column in [group_column, measurement_column]:
-        if column not in df.columns:
+        if column not in analysis_data.columns:
             raise ValueError(f"Column '{column}' was not found in the dataset.")
 
-    if not pd.api.types.is_numeric_dtype(df[measurement_column]):
+    if not pd.api.types.is_numeric_dtype(analysis_data[measurement_column]):
         raise ValueError(f"Column '{measurement_column}' does not have numeric values")
         
-    return (df.groupby(group_column)[measurement_column].agg(["mean", "std", "count"]))
+    return (analysis_data.groupby(group_column)[measurement_column].agg(["mean", "std", "count"]))
 
-summary = summarize_data(df, 'mass_g', 'extension_cm')
+summary = summarize_data(analysis_data, x_column, y_column)
 st.write(summary)
-st.line_chart(summary)
 
 missing = df.isna().sum()
 
 for column, count in missing.items():
     if count > 0:
-        print(f"Warning: {column} has {count} missing value(s).")
+        st.write(f"Warning: {column} has {count} missing value(s).")
 
-plt.errorbar(
-    x= summary.index,
-    y= summary['mean'],
-    yerr= summary['std'],
-    fmt="o",
-    capsize=4
-)
+st.scatter_chart(analysis_data, x=x_column, y=y_column)
 
-plt.xlabel("Mass (g)")
-plt.ylabel("Mean extension (cm)")
-plt.title("Effect of mass on extension")
-plt.tight_layout()
-plt.show()
+if len(analysis_data) < 3:
+    st.info("At least three complete measurements are required here for correlation.")
+elif (
+    analysis_data[x_column].nunique() < 2
+    or analysis_data[y_column].nunique() < 2
+):
+    st.info("Correlation is undefined when either variable is constant.")
+else:
+    r = analysis_data[x_column].corr(analysis_data[y_column])
+    st.write(f"Pearson correlation (r): {r:.3f}")
+    st.caption("Measures linear association; does not establish cause and effect.")
