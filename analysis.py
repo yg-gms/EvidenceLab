@@ -1,7 +1,6 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import streamlit as st
-import time
+
 
 st.title("EvidenceLab")
 st.write("Upload experimental data to explore your results.")
@@ -9,7 +8,7 @@ st.write("Upload experimental data to explore your results.")
 uploaded_file = st.file_uploader("Upload CSV file", type="csv")
 
 if uploaded_file is None:
-    st.info("Uplaod a CSV file to begin")
+    st.info("Upload a CSV file to begin")
     st.stop()
 
 df = pd.read_csv(uploaded_file)
