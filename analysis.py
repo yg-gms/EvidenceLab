@@ -1,12 +1,18 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import streamlit as st
+import time
 
-df = pd.read_csv("sample.csv")
+st.title("EvidenceLab")
+st.write("Upload experimental data to explore your results.")
 
-print(df.head(5))
-print(df.shape)
-print(df.dtypes)
-print(df.isna().sum())
+uploaded_file = st.file_uploader("Upload CSV file", type="csv")
+
+if uploaded_file is None:
+    st.info("Uplaod a CSV file to begin")
+    st.stop()
+
+df = pd.read_csv(uploaded_file)
 
 #print(df.groupby("mass_g")["extension_cm"].mean())
 
@@ -21,7 +27,8 @@ def summarize_data(df, group_column, measurement_column):
     return (df.groupby(group_column)[measurement_column].agg(["mean", "std", "count"]))
 
 summary = summarize_data(df, 'mass_g', 'extension_cm')
-print(summary)
+st.write(summary)
+st.line_chart(summary)
 
 missing = df.isna().sum()
 
