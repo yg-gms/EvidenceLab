@@ -1,19 +1,73 @@
 # EvidenceLab
 
-A Streamlit app for students to explore relationships in experimental data.
+EvidenceLab is a local research workspace for exploring CSV measurements. At startup, upload your own CSV or choose one of three sample experiments. Use **Change dataset** in the top bar to switch from any section.
 
-## Run
+## Run the website
 
-From the EvidenceLab checkout, use Python 3.11 or later.
+Use Python 3.11+ and Node.js 22.12+ from this directory.
 
 ```sh
-python3 -m venv .venv             # First-time setup only
+python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
+npm --prefix web ci
+npm --prefix web run build
+.venv/bin/python -m uvicorn workspace_api:app --host 127.0.0.1 --port 8000
+```
+
+Open [EvidenceLab locally](http://127.0.0.1:8000). For frontend development,
+keep the Python server running and run `npm --prefix web run dev` in another
+terminal. Vite forwards API requests to port 8000.
+
+## Try the demo
+
+Choose **Sample datasets → Five-trial experiment**. In **Analysis Studio**,
+inspect trial 5 and exclude it. The slope changes from about +1.26 to −1.
+Open **Findings** to see the updated fit and export the Markdown summary.
+Restore the trial to recover the original result.
+
+- **Overview** opens sample or uploaded data, shows completeness and the mean
+  response, and lets you edit the research question.
+- **Data Explorer** searches and filters original rows and profiles each column.
+- **Analysis Studio** plots individual trials, grouped means, sample SD and
+  distributions. Inspect flagged trials or replay observations in CSV order.
+  Exclusions apply only to the analysis. The distribution uses finite pairs for
+  the selected X and Y, just like the fit.
+- **AI Assistant** sends a question only when you press **Send question**.
+  It uses the same free-model OpenRouter settings as the fallback app.
+  The provider receives the question, the current selected-variable evidence
+  and up to eight recent messages. Data exploration works offline after setup.
+- **Findings** labels computed results and AI interpretations separately. The
+  export records the selected variables, included and excluded trial counts,
+  excluded trial IDs, fitted statistics, cautions and the latest AI answer.
+
+Browser state is shared across sections in the current tab. Changing the dataset,
+variable pair, exclusions or research question clears the previous conversation
+so older answers cannot be mistaken for current findings. Refresh returns to the dataset chooser. Upload limits are 1 MB, 5,000 rows and 100 columns.
+
+## Architecture
+
+`web/` contains the React/Vite client with Tailwind, local Geist fonts and
+Recharts. `workspace_api.py` uses the existing Starlette and Uvicorn dependencies
+to serve the built client and stateless dataset, analysis and chat endpoints.
+Python parses the CSV and calls `calculations.py` for cleaning, regression and
+grouped statistics. The browser retains the uploaded CSV in memory. The server
+processes it per request without a database or uploaded files on disk.
+
+`evidence.py` assembles the selected-variable summary. `interpretation.py`
+shares a timeout-limited, zero-retry, free-model OpenRouter client between
+website chat and the original structured Streamlit interpretation. Configure
+`OPENAI_API_KEY` and optionally `OPENAI_MODEL` in the server environment or
+use the existing `.streamlit/secrets.toml` settings described below. Paid
+models are rejected. A provider failure leaves the numerical analysis available.
+
+## Streamlit fallback
+
+```sh
 .venv/bin/python -m streamlit run analysis.py
 ```
 
-Upload a UTF-8, comma-separated CSV with a header and at least two numeric
-columns. Try `sample.csv`, then choose the X and Y variables.
+The original Streamlit workflow, including its structured interpretation,
+trial-influence comparison and experiment replay, is still available.
 
 ## Relationship analysis checkpoint
 
